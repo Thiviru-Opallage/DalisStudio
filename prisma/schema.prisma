@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id                  Int          @id @default(autoincrement())
+  name                String?      @db.VarChar(255)
+  email               String       @unique @db.VarChar(255)
+  role                String       @default("user") @db.VarChar(50)
+  password_hash       String?      @db.VarChar(255)
+  phone               String?      @db.VarChar(20)
+  is_active           Boolean      @default(true)
+  email_verified      Boolean      @default(false)
+  email_notifications Boolean      @default(true)   // ← NEW
+  created_at          DateTime     @default(now()) @db.Timestamp(0)
+  updated_at          DateTime     @default(now()) @updatedAt
+
+  sessions    sessions[]
+  login_logs  login_logs[]
+}
+
+model sessions {
+  id            Int      @id @default(autoincrement())
+  user_id       Int
+  session_token String   @unique @db.VarChar(255)
+  expires_at    DateTime @db.DateTime(0)
+  created_at    DateTime @default(now()) @db.Timestamp(0)
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+model login_logs {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  email      String   @db.VarChar(255)
+  status     String   @db.VarChar(20)
+  ip_address String?  @db.VarChar(45)
+  user_agent String?  @db.Text
+  created_at DateTime @default(now()) @db.Timestamp(0)
+
+  users users? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([email])
+  @@index([created_at])
+}
+
+model contact_messages {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(100)
+  email      String   @db.VarChar(255)
+  phone      String?  @db.VarChar(30)
+  message    String   @db.Text
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+}
+
+model visits {
+  id               Int      @id @default(autoincrement())
+  ip_address       String?  @db.VarChar(45)
+  user_agent       String?  @db.Text
+  referrer         String?  @db.VarChar(500)
+  visitor_name     String?  @db.VarChar(255)
+  visitor_email    String?  @db.VarChar(255)
+  device_type      String?  @db.VarChar(20)
+  is_bounce        Boolean  @default(true)          
+  session_duration Int?                              
+  visited_at       DateTime @default(now()) @db.Timestamp(0)
+
+  page_views page_views[]
+}
+
+model page_views {
+  id        Int      @id @default(autoincrement())
+  page_path String   @db.VarChar(255)
+  visit_id  Int?
+  viewed_at DateTime @default(now()) @db.Timestamp(0)
+
+  visits visits? @relation(fields: [visit_id], references: [id], onUpdate: Restrict)
+
+  @@index([visit_id])
+  @@index([page_path])
+}

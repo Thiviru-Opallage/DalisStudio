@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* ROOT THEME TOKENS */
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --grid-line: rgba(0, 0, 0, 0.07);
+}
+
+/* DARK MODE TOKENS */
+body.dark {
+  --bg: #0a0a0a;
+  --fg: #ededed;
+  --grid-line: rgba(255, 255, 255, 0.09);
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, sans-serif;
+}
+
+/*
+ * GRID BACKGROUND
+ * ─────────────────────────────────────────────────────────────────
+ * IMPORTANT: Use `background-color` + `background-image` as two
+ * separate declarations. Never use the `background` shorthand here
+ * because it resets background-image to none.
+ * The section also must NOT have an inline `background` style.
+ */
+.grid-background {
+  position: relative;
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      var(--grid-line),
+      var(--grid-line) 1px,
+      transparent 1px,
+      transparent 187px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--grid-line),
+      var(--grid-line) 1px,
+      transparent 1px,
+      transparent 189px
+    );
+}
