@@ -55,11 +55,11 @@ export default function Navbar() {
               style={{ background: "var(--fg)" }}
             >
               <Image
-                src="/mainLogo.jpg"
+                src="/mainLogo2-removebg.PNG"
                 alt="Dalis Studio Logo"
-                width={20}
-                height={20}
-                className="object-contain rounded-full"
+                width={50}
+                height={50}
+                className="object-contain"
               />
             </div>
           </Link>

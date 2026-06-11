@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import Navbar from "@/components/Navbar";
 import LayoutWrapper from "@/components/LayoutWrapper";
 import Providers from "./providers";
 import VisitTracker from "@/components/VisitTracker";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { sfPro } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Dalis Studio",
@@ -28,16 +18,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      {/*
-        KEY FIXES:
-        - `flex flex-col` on body so LayoutWrapper's flex-1 / shrink-0 children work
-        - `min-h-screen` ensures the body fills the viewport
-        - `overflow-x-hidden` prevents horizontal scroll from any section overflows
-        - `dark` class kept so body.dark CSS tokens apply
-      */}
+    <html lang="en" className={sfPro.variable}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen overflow-x-hidden bg-transparent dark`}
+        className="font-sans antialiased flex flex-col min-h-screen overflow-x-hidden bg-transparent dark"
       >
         <Providers>
           <Navbar />
