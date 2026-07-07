@@ -52,20 +52,26 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // The side-menu theme toggle is hidden only on the Home page, and only
-  // until the user has scrolled past its hero section — Home's hero
-  // already has its own <ThemeSwitch />, so showing a second one in the
-  // menu at the same time would be redundant. Every other page shows the
-  // toggle in the menu right away, since they have no hero-embedded switch.
   const isHome = pathname === "/";
-  const showMenuThemeToggle = !isHome || pastHero;
-
-  const menuEase = cubicBezier(0.76, 0, 0.24, 1);
 
   // On mobile (< 768px) the hamburger is always visible.
   // On desktop it appears only after scrolling or when the menu is open.
   const isMobile = dimension.width > 0 && dimension.width < 768;
   const showHamburger = isMobile || isScrolled || open;
+
+  // The side-menu theme toggle is hidden only on the Home page, and only
+  // until the user has scrolled past its hero section — Home's hero
+  // already has its own <ThemeSwitch />, so showing a second one in the
+  // menu at the same time would be redundant. Every other page shows the
+  // toggle in the menu right away, since they have no hero-embedded switch.
+  //
+  // On MOBILE, however, the Hero section's own <ThemeSwitch /> isn't
+  // reachable/visible, so the menu is the only place mobile users can
+  // access the toggle — show it there unconditionally, regardless of
+  // scroll position or page. Desktop keeps the original gating untouched.
+  const showMenuThemeToggle = isMobile ? true : !isHome || pastHero;
+
+  const menuEase = cubicBezier(0.76, 0, 0.24, 1);
 
   const initialPath = `M100 0 L100 ${dimension.height} Q-100 ${
     dimension.height / 2
@@ -224,11 +230,13 @@ export default function Navbar() {
                   attached to the hamburger button itself. Sized down from
                   the Hero section's larger instance via SphereToggle's
                   size props.
-                  On Home only, this is withheld until the user scrolls
-                  past the hero section, since the hero already has its own
-                  toggle — showing both at once would be redundant. On
-                  every other page (no hero-embedded switch) it's always
-                  shown. */}
+                  On Home (desktop only), this is withheld until the user
+                  scrolls past the hero section, since the hero already has
+                  its own toggle — showing both at once would be redundant.
+                  On every other desktop page (no hero-embedded switch) it's
+                  always shown. On MOBILE it's always shown regardless of
+                  page or scroll, since the Hero's toggle isn't reachable
+                  there. */}
               {showMenuThemeToggle && (
                 <motion.div
                   initial={{ x: 80, opacity: 0 }}
