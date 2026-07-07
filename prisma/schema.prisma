@@ -16,7 +16,8 @@ model users {
   phone               String?      @db.VarChar(20)
   is_active           Boolean      @default(true)
   email_verified      Boolean      @default(false)
-  email_notifications Boolean      @default(true)   // ← NEW
+  email_notifications Boolean      @default(true)
+  token_version       Int          @default(0)      // Increment to revoke all JWTs for this user
   created_at          DateTime     @default(now()) @db.Timestamp(0)
   updated_at          DateTime     @default(now()) @updatedAt
 
@@ -60,6 +61,9 @@ model contact_messages {
   message    String   @db.Text
   is_read    Boolean  @default(false)
   created_at DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([is_read])
+  @@index([created_at])
 }
 
 model visits {
@@ -75,6 +79,8 @@ model visits {
   visited_at       DateTime @default(now()) @db.Timestamp(0)
 
   page_views page_views[]
+
+  @@index([visited_at])
 }
 
 model page_views {
@@ -87,4 +93,74 @@ model page_views {
 
   @@index([visit_id])
   @@index([page_path])
+}
+
+model hero_section {
+  id              Int      @id @default(autoincrement())
+  base_image      String   @db.VarChar(500)
+  hover_image     String   @db.VarChar(500)
+  title           String   @default("Dalis Studio") @db.VarChar(255)
+  updated_at      DateTime @default(now()) @updatedAt
+}
+
+model quote_bracket_image {
+  id              Int      @id @default(autoincrement())
+  bracket_group   Int                        // 1, 2, or 3
+  image_url       String   @db.VarChar(500)
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([bracket_group, sort_order])
+}
+
+model signature_work {
+  id              Int      @id @default(autoincrement())
+  title           String   @db.VarChar(255)
+  description     String   @db.Text
+  image_url       String   @db.VarChar(500)
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @default(now()) @updatedAt
+}
+
+model works_grid_item {
+  id              Int      @id @default(autoincrement())
+  title           String   @db.VarChar(255)
+  description     String   @db.Text
+  image_url       String   @db.VarChar(500)
+  width_class     String   @db.VarChar(20)   // e.g. "w-56"
+  height_class    String   @db.VarChar(20)   // e.g. "h-64"
+  top_class       String   @db.VarChar(30)   // e.g. "top-[40%]"
+  left_class      String   @db.VarChar(30)   // e.g. "left-[12%]"
+  z_index         Int      @default(10)
+  ambient_dark    String   @db.VarChar(100)  // e.g. "from-emerald-950 to-neutral-950"
+  ambient_light   String   @db.VarChar(100)  // e.g. "from-emerald-100 via-white to-white"
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @default(now()) @updatedAt
+}
+
+model about_hero {
+  id                    Int      @id @default(autoincrement())
+  base_image_dark       String   @db.VarChar(500)
+  hover_image_dark      String   @db.VarChar(500)
+  base_image_light      String   @db.VarChar(500)
+  hover_image_light     String   @db.VarChar(500)
+  updated_at            DateTime @default(now()) @updatedAt
+}
+
+model about_quote_image {
+  id              Int      @id @default(autoincrement())
+  position        String   @db.VarChar(10)   // "one", "two", "three"
+  image_url       String   @db.VarChar(500)
+  updated_at      DateTime @default(now()) @updatedAt
+
+  @@unique([position])
+}
+
+model contact_content {
+  id              Int      @id @default(autoincrement())
+  card_image_url  String   @db.VarChar(500)
+  showreel_url    String   @db.VarChar(500)
+  updated_at      DateTime @default(now()) @updatedAt
 }

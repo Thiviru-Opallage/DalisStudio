@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+import { visitLimiter } from "@/lib/rateLimit";
 
 function detectDevice(ua: string): "mobile" | "tablet" | "desktop" {
   if (/mobile/i.test(ua))      return "mobile";
@@ -9,11 +10,17 @@ function detectDevice(ua: string): "mobile" | "tablet" | "desktop" {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit — prevent analytics spam
+  const rateCheck = visitLimiter(req);
+  if (!rateCheck.success) {
+    return NextResponse.json({ ok: true }); // Silent — don't reveal rate limit to bots
+  }
+
   try {
     const body = await req.json();
     const { page_path } = body;
 
-    if (!page_path || typeof page_path !== "string") {
+    if (!page_path || typeof page_path !== "string" || page_path.length > 500) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
     if (page_path.startsWith("/admin")) {

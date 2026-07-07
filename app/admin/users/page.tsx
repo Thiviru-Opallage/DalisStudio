@@ -25,7 +25,7 @@ export default async function UsersPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">User Management</h1>
         <p className="text-sm text-gray-500 mt-1">
           {users.length} total user{users.length !== 1 ? "s" : ""}
         </p>

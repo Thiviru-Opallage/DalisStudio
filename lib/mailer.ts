@@ -1,6 +1,20 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
+// ── Defense-in-depth: escape before inserting into an HTML email.
+// sanitize-html already neutralizes contact-form input upstream (verified),
+// but this file shouldn't depend on that staying true forever.
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ── Gmail transport — used only for internal login alerts ──────
 function getTransporter() {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
@@ -11,16 +25,43 @@ function getTransporter() {
   });
 }
 
-// Only send to admins who have email_notifications = true
-async function getAdminEmails(): Promise<string[]> {
-  const admins = await prisma.users.findMany({
-    where: { role: "admin", is_active: true, email_notifications: true },
-    select: { email: true },
-  });
-  return admins.map((a) => a.email);
+// ── Resend client — used for public contact form submissions ───
+function getResendClient(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.warn("[Mailer] RESEND_API_KEY not set — contact emails will not send.");
+    return null;
+  }
+  return new Resend(key);
 }
 
-async function sendEmail(subject: string, html: string): Promise<void> {
+// Recipients come from the users table (role=admin, active, opted in).
+// ADMIN_EMAIL is only used as a fallback when no admin account exists at
+// all yet (e.g. fresh install) — it never overrides an admin's own
+// is_active or email_notifications choice.
+async function getAdminEmails(): Promise<string[]> {
+  // Single query: fetch all admins (including inactive/opted-out) to check existence,
+  // then filter in-app. Avoids the extra findFirst round-trip.
+  const allAdmins = await prisma.users.findMany({
+    where: { role: "admin" },
+    select: { email: true, is_active: true, email_notifications: true },
+  });
+
+  if (allAdmins.length === 0) {
+    // No admin accounts exist yet — use env fallback for fresh installs
+    const fallback = process.env.ADMIN_EMAIL;
+    return fallback ? [fallback] : [];
+  }
+
+  // Only return admins who are active AND opted in to notifications
+  const emails = allAdmins
+    .filter((a) => a.is_active && a.email_notifications)
+    .map((a) => a.email);
+
+  return emails;
+}
+
+async function sendViaGmail(subject: string, html: string): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) return;
 
@@ -29,13 +70,35 @@ async function sendEmail(subject: string, html: string): Promise<void> {
 
   try {
     await transporter.sendMail({
-      from:    `"Dalis Studio" <${process.env.GMAIL_USER}>`,
-      to:      recipients.join(", "),
+      from: `"Dalis Studio" <${process.env.GMAIL_USER}>`,
+      to: recipients.join(", "),
       subject,
       html,
     });
   } catch (err) {
-    console.error("[Mailer] Failed to send email:", err);
+    console.error("[Mailer] Gmail send failed:", err);
+  }
+}
+
+async function sendViaResend(subject: string, html: string): Promise<void> {
+  const resend = getResendClient();
+  if (!resend) return;
+
+  const recipients = await getAdminEmails();
+  if (recipients.length === 0) return;
+
+  const from = process.env.RESEND_FROM_EMAIL ?? "Dalis Studio <onboarding@resend.dev>";
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: recipients,
+      subject,
+      html,
+    });
+    if (error) console.error("[Mailer] Resend send failed:", error);
+  } catch (err) {
+    console.error("[Mailer] Resend send threw:", err);
   }
 }
 
@@ -46,6 +109,11 @@ export async function mailContactSubmission(data: {
     timeZone: "Asia/Colombo", dateStyle: "medium", timeStyle: "short",
   });
 
+  const name    = escapeHtml(data.name);
+  const email   = escapeHtml(data.email);
+  const phone   = data.phone ? escapeHtml(data.phone) : null;
+  const message = escapeHtml(data.message);
+
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;
                 padding:32px 24px;border:1px solid #e5e5e5;border-radius:10px;">
@@ -54,22 +122,22 @@ export async function mailContactSubmission(data: {
       <table style="width:100%;border-collapse:collapse;font-size:14px;color:#111;">
         <tr>
           <td style="padding:12px 0;color:#888;width:90px;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Name</td>
-          <td style="padding:12px 0;border-top:1px solid #f0f0f0;">${data.name}</td>
+          <td style="padding:12px 0;border-top:1px solid #f0f0f0;">${name}</td>
         </tr>
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Email</td>
           <td style="padding:12px 0;border-top:1px solid #f0f0f0;">
-            <a href="mailto:${data.email}" style="color:#000;text-decoration:underline;">${data.email}</a>
+            <a href="mailto:${email}" style="color:#000;text-decoration:underline;">${email}</a>
           </td>
         </tr>
-        ${data.phone ? `
+        ${phone ? `
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Phone</td>
-          <td style="padding:12px 0;border-top:1px solid #f0f0f0;">${data.phone}</td>
+          <td style="padding:12px 0;border-top:1px solid #f0f0f0;">${phone}</td>
         </tr>` : ""}
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Message</td>
-          <td style="padding:12px 0;border-top:1px solid #f0f0f0;white-space:pre-wrap;line-height:1.6;">${data.message}</td>
+          <td style="padding:12px 0;border-top:1px solid #f0f0f0;white-space:pre-wrap;line-height:1.6;">${message}</td>
         </tr>
       </table>
       <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e5e5;">
@@ -81,7 +149,7 @@ export async function mailContactSubmission(data: {
       <p style="margin-top:24px;font-size:11px;color:#bbb;">Dalis Studio — automated notification</p>
     </div>
   `;
-  await sendEmail("📩 New Contact Message — Dalis Studio", html);
+  await sendViaResend("📩 New Contact Message — Dalis Studio", html);
 }
 
 export async function mailLoginAlert(data: {
@@ -91,7 +159,10 @@ export async function mailLoginAlert(data: {
   const time = new Date().toLocaleString("en-US", {
     timeZone: "Asia/Colombo", dateStyle: "medium", timeStyle: "short",
   });
-  const who = data.name?.trim() || "Unknown user";
+  const who       = escapeHtml(data.name?.trim() || "Unknown user");
+  const email     = escapeHtml(data.email);
+  const ip        = data.ip ? escapeHtml(data.ip) : undefined;
+  const userAgent = data.userAgent ? escapeHtml(data.userAgent) : undefined;
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;
@@ -105,21 +176,21 @@ export async function mailLoginAlert(data: {
         </tr>
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Email</td>
-          <td style="padding:12px 0;border-top:1px solid #f0f0f0;">${data.email}</td>
+          <td style="padding:12px 0;border-top:1px solid #f0f0f0;">${email}</td>
         </tr>
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Method</td>
           <td style="padding:12px 0;border-top:1px solid #f0f0f0;text-transform:capitalize;">${data.method}</td>
         </tr>
-        ${data.ip ? `
+        ${ip ? `
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">IP</td>
-          <td style="padding:12px 0;border-top:1px solid #f0f0f0;font-family:monospace;font-size:13px;">${data.ip}</td>
+          <td style="padding:12px 0;border-top:1px solid #f0f0f0;font-family:monospace;font-size:13px;">${ip}</td>
         </tr>` : ""}
-        ${data.userAgent ? `
+        ${userAgent ? `
         <tr>
           <td style="padding:12px 0;color:#888;vertical-align:top;font-weight:600;border-top:1px solid #f0f0f0;">Device</td>
-          <td style="padding:12px 0;border-top:1px solid #f0f0f0;font-size:12px;color:#555;">${data.userAgent}</td>
+          <td style="padding:12px 0;border-top:1px solid #f0f0f0;font-size:12px;color:#555;">${userAgent}</td>
         </tr>` : ""}
       </table>
       <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e5e5e5;">
@@ -131,5 +202,5 @@ export async function mailLoginAlert(data: {
       <p style="margin-top:24px;font-size:11px;color:#bbb;">Dalis Studio — automated notification</p>
     </div>
   `;
-  await sendEmail("🔐 Login Alert — Dalis Studio", html);
+  await sendViaGmail("🔐 Login Alert — Dalis Studio", html);
 }

@@ -40,14 +40,18 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // Allow Next.js scripts + Google (for Google Auth)
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
+            // Allow Next.js scripts + Google (for Google Auth)
+            // Note: 'unsafe-inline' is required for Next.js style hydration.
+            // In a future upgrade, consider nonce-based CSP for tighter control.
+            "script-src 'self' 'unsafe-inline' https://accounts.google.com",
               // Allow styles from self + Google Fonts
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // Allow fonts from Google
               "font-src 'self' https://fonts.gstatic.com",
               // Allow images from self, data URIs, and Unsplash/Pexels (your image sources)
               "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://lh3.googleusercontent.com",
+              // Allow media like video/audio from self
+              "media-src 'self'",
               // Allow connections to your own API + Google Auth
               "connect-src 'self' https://accounts.google.com",
               // Block all frames
@@ -95,6 +99,7 @@ const nextConfig = {
   // Whitelist only sources you actually use
   // ─────────────────────────────────────────
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: "https",

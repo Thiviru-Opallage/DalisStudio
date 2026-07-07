@@ -6,7 +6,6 @@ import { contactLimiter }         from "@/lib/rateLimit";
 import { contactSchema }          from "@/lib/validation";
 import { mailContactSubmission }  from "@/lib/mailer";
 
-// ── POST — public, no login required ────────────────────────
 export async function POST(req: NextRequest) {
   const rateCheck = contactLimiter(req);
   if (!rateCheck.success) {
@@ -17,7 +16,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body   = await req.json();
+    const body = await req.json();
+
+    if (typeof body.company === "string" && body.company.trim() !== "") {
+      return NextResponse.json(
+        { message: "Message sent! We'll be in touch soon." },
+        { status: 201 }
+      );
+    }
+
     const parsed = contactSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -33,7 +40,6 @@ export async function POST(req: NextRequest) {
       data: { name, email, phone: phone ?? null, message },
     });
 
-    // Email admin — fire and forget, never blocks response
     mailContactSubmission({ name, email, phone, message }).catch(() => {});
 
     return NextResponse.json(
@@ -49,7 +55,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── GET — admin only ─────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin") {
@@ -57,10 +62,29 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const messages = await prisma.contact_messages.findMany({
-      orderBy: { created_at: "desc" },
-    });
-    return NextResponse.json({ messages });
+    const { searchParams } = new URL(req.url);
+    const page  = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10) || 50));
+    const skip  = (page - 1) * limit;
+
+    const [messages, total] = await Promise.all([
+      prisma.contact_messages.findMany({
+        orderBy: { created_at: "desc" },
+        take: limit,
+        skip,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          message: true,
+          is_read: true,
+          created_at: true,
+        },
+      }),
+      prisma.contact_messages.count(),
+    ]);
+    return NextResponse.json({ messages, total, page, limit });
   } catch (err) {
     console.error("[Contact GET] Error:", err);
     return NextResponse.json(

@@ -1,28 +1,22 @@
 "use client";
 
-import { motion } from "framer-motion";
+import AboutHero from "@/components/AboutHero";
+import AboutText from "@/components/AboutText";
+import AboutQuote from "@/components/AboutQuote";
 
 export default function AboutPage() {
   return (
-    <section className="min-h-screen bg-white text-black px-8 py-24">
-      <motion.h1
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-5xl font-bold mb-8"
-      >
-        About Dali Studio
-      </motion.h1>
+    <>
+      <main className="relative min-h-screen overflow-x-hidden" style={{ background: "var(--bg)" }}>
+        {/* SECTION 1: Dynamic Geometric Mask Hero Frame */}
+        <AboutHero />
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="max-w-2xl text-lg text-gray-700 leading-relaxed"
-      >
-        Dali Studio is a creative design studio focused on storytelling,
-        visual identity, and motion-driven experiences. We believe design
-        should feel alive, emotional, and intentional.
-      </motion.p>
-    </section>
+        {/* SECTION 2: Textual Biography and Artistic Statement */}
+        <AboutText />
+
+        {/* SECTION 3: (To be appended next) */}
+        <AboutQuote />
+      </main>
+    </>
   );
 }

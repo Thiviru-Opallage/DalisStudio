@@ -39,7 +39,9 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = "/";
+      const params = new URLSearchParams(window.location.search);
+      const callbackUrl = params.get("callbackUrl") || "/";
+      window.location.href = callbackUrl;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -53,14 +55,14 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md p-8 border border-gray-200 rounded-xl shadow-sm"
+        className="w-full max-w-md p-8 border border-gray-200 rounded-xl shadow-sm bg-white"
       >
-        <h1 className="text-3xl font-semibold mb-2">Welcome back</h1>
+        <h1 className="text-3xl font-semibold mb-2 text-black">Welcome back</h1>
         <p className="text-sm text-gray-500 mb-6">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="underline cursor-pointer hover:text-black transition-colors"
+            className="underline cursor-pointer hover:text-black transition-colors text-black"
           >
             Create one
           </Link>
@@ -68,11 +70,15 @@ export default function LoginPage() {
 
         {/* Google */}
         <button
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => {
+            const params = new URLSearchParams(window.location.search);
+            const callbackUrl = params.get("callbackUrl") || "/";
+            signIn("google", { callbackUrl });
+          }}
           disabled={loading}
           className="w-full flex items-center justify-center gap-2 border border-gray-300
                      py-3 rounded cursor-pointer hover:bg-gray-50 transition-colors
-                     disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+                     disabled:opacity-50 disabled:cursor-not-allowed mb-6 text-black"
         >
           <GoogleIcon />
           Continue with Google
@@ -96,7 +102,7 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full mb-3 border border-gray-300 p-3 rounded
                      focus:outline-none focus:ring-2 focus:ring-black
-                     transition disabled:opacity-50"
+                     transition disabled:opacity-50 text-black placeholder-gray-400 bg-white"
         />
         <input
           type="password"
@@ -107,7 +113,7 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full mb-5 border border-gray-300 p-3 rounded
                      focus:outline-none focus:ring-2 focus:ring-black
-                     transition disabled:opacity-50"
+                     transition disabled:opacity-50 text-black placeholder-gray-400 bg-white"
         />
 
         <button

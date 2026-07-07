@@ -11,6 +11,39 @@ const sanitizedString = (min: number, max: number, label: string) =>
     );
 
 // ─────────────────────────────────────────
+// SAFE URL VALIDATOR
+// Rejects dangerous URI schemes (javascript:, data:, vbscript:, etc.)
+// Allows only relative paths (/uploads/...) or https:// URLs.
+// ─────────────────────────────────────────
+const DANGEROUS_SCHEMES = /^\s*(javascript|data|vbscript|blob|file):/i;
+
+// Allowed relative paths: /uploads/*, /videos/*, or single-segment public assets
+const SAFE_RELATIVE =
+  /^\/(?:uploads\/[\w.\-]+|videos\/[\w.\-]+|[\w.\-]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm))$/i;
+
+export const safeUrl = (maxLen = 500) =>
+  z
+    .string()
+    .min(1, "URL is required")
+    .max(maxLen, `URL must be at most ${maxLen} characters`)
+    .refine(
+      (val) => !DANGEROUS_SCHEMES.test(val),
+      "Dangerous URL scheme detected"
+    )
+    .refine(
+      (val) => !val.startsWith("//"),
+      "Protocol-relative URLs are not allowed"
+    )
+    .refine(
+      (val) => !val.includes(".."),
+      "Path traversal detected"
+    )
+    .refine(
+      (val) => val.startsWith("https://") || SAFE_RELATIVE.test(val),
+      "URL must be /uploads/, /videos/, a public asset, or https://"
+    );
+
+// ─────────────────────────────────────────
 // REGISTER
 // ─────────────────────────────────────────
 export const registerSchema = z.object({

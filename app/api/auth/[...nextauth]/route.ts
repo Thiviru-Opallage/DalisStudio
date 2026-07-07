@@ -6,6 +6,7 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider     from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt             from "bcrypt";
+import { headers }        from "next/headers";
 import { prisma }         from "@/lib/prisma";
 import { mailLoginAlert } from "@/lib/mailer";
 
@@ -32,6 +33,20 @@ async function writeLoginLog(data: {
     });
   } catch (err) {
     console.error("[AuditLog] Failed:", err);
+  }
+}
+
+async function getRequestMeta(): Promise<{ ip?: string; userAgent?: string }> {
+  try {
+    const headersList = await headers();
+    const ip =
+      headersList.get("x-forwarded-for")?.split(",")[0].trim() ??
+      headersList.get("x-real-ip") ??
+      undefined;
+    const userAgent = headersList.get("user-agent") ?? undefined;
+    return { ip, userAgent };
+  } catch {
+    return {};
   }
 }
 
@@ -160,6 +175,8 @@ export const authOptions: NextAuthOptions = {
         const name  =
           typeof profile?.name === "string" ? profile.name : undefined;
 
+        const { ip, userAgent } = await getRequestMeta();
+
         const existing = await prisma.users.findUnique({ where: { email } });
 
         if (!existing) {
@@ -183,13 +200,16 @@ export const authOptions: NextAuthOptions = {
           userId: existing?.id,
           email,
           status: "success",
+          ip,
+          userAgent,
         });
 
-        // Email admin — fire and forget
         mailLoginAlert({
-          name:   name ?? existing?.name ?? null,
+          name:      name ?? existing?.name ?? null,
           email,
-          method: "google",
+          method:    "google",
+          ip,
+          userAgent,
         }).catch(() => {});
       }
 
@@ -197,16 +217,85 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user }) {
-      if (user) {
+      // Initial sign-in — snapshot token_version from DB into the JWT
+      if (user?.email) {
         token.id    = user.id;
         token.role  = (user as any).role;
         token.name  = user.name;
         token.email = user.email;
+
+        try {
+          const dbUser = await prisma.users.findUnique({
+            where: { email: user.email },
+            select: { token_version: true, role: true, is_active: true },
+          });
+          if (dbUser) {
+            token.token_version = dbUser.token_version;
+            token.role          = dbUser.role;
+            token.is_active     = dbUser.is_active;
+          }
+        } catch {
+          // DB unreachable — keep sign-in values
+        }
+
+        return token;
       }
+
+      // Subsequent requests — compare JWT snapshot against DB; never overwrite version
+      if (token.email) {
+        try {
+          const dbUser = await prisma.users.findUnique({
+            where: { email: token.email as string },
+            select: { token_version: true, role: true, is_active: true },
+          });
+
+          if (
+            !dbUser ||
+            !dbUser.is_active ||
+            dbUser.token_version !== token.token_version
+          ) {
+            token.invalid = true;
+          } else {
+            token.role      = dbUser.role;
+            token.is_active = dbUser.is_active;
+          }
+        } catch {
+          // DB unreachable — keep existing token values
+        }
+      }
+
       return token;
     },
 
     async session({ session, token }) {
+      if (token.invalid || token.is_active === false) {
+        return { ...session, user: undefined, expires: new Date(0).toISOString() } as any;
+      }
+
+      // Re-validate role, active status, and token_version from DB on every session read
+      if (token.email) {
+        try {
+          const dbUser = await prisma.users.findUnique({
+            where: { email: token.email as string },
+            select: { token_version: true, role: true, is_active: true },
+          });
+
+          if (
+            !dbUser ||
+            !dbUser.is_active ||
+            dbUser.token_version !== token.token_version
+          ) {
+            return { ...session, user: undefined, expires: new Date(0).toISOString() } as any;
+          }
+
+          if (session.user) {
+            session.user.role = dbUser.role;
+          }
+        } catch {
+          // DB unreachable — fall back to token values already validated in jwt callback
+        }
+      }
+
       if (session.user) {
         session.user.id    = token.id    as string;
         session.user.role  = token.role  as string;
@@ -217,7 +306,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 3600 },  // 1 hour — short TTL for security
   pages:   { signIn: "/login" },
   secret:  process.env.NEXTAUTH_SECRET,
 };

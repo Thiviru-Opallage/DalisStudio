@@ -1,48 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import HeroSection from "@/components/HeroSection";
-import SignatureWorks from "@/components/SignatureWorks";
-import GreetingAnimation from "@/components/GreetingAnimation";
-import CloudyLogoReveal from "@/components/CloudyLogoReveal";
-import QuoteSection from "@/components/QuoteSection";
+import ScrollRevealSection from "@/components/ScrollRevealSection";
+
+const SignatureWorks = dynamic(() => import("@/components/SignatureWorks"));
+const QuoteSection = dynamic(() => import("@/components/QuoteSection"));
 
 export default function HomePage() {
-  const [showGreeting, setShowGreeting] = useState(false);
-
-  useEffect(() => {
-    const hasVisited = sessionStorage.getItem("hasVisited");
-
-    if (!hasVisited) {
-      setShowGreeting(true);
-      sessionStorage.setItem("hasVisited", "true");
-    }
-  }, []);
-
   return (
     <>
       {/* MAIN PAGE CONTENT */}
       <main className="relative">
-        <div className="grid-background">
+        {/* Hero is the first thing visible on load — keep its settle very
+            subtle so it doesn't fight the WebGL liquid mask already doing
+            work here. */}
+        <ScrollRevealSection intensity={0.4} maxBlur={5}>
           <HeroSection />
-        </div>
+        </ScrollRevealSection>
 
-        <div className="bg-black">
-          <CloudyLogoReveal />
-        </div>
-        
-        <QuoteSection />
-        
-        <div className="grid-background">
+        <ScrollRevealSection intensity={0.85}>
+          <QuoteSection />
+        </ScrollRevealSection>
+
+        <ScrollRevealSection intensity={1}>
           <SignatureWorks />
-        </div>
+        </ScrollRevealSection>
       </main>
-     
-
-      {/* GREETING OVERLAY (OUTSIDE LAYOUT FLOW)  */}
-      {showGreeting && (
-        <GreetingAnimation onFinish={() => setShowGreeting(false)} />
-      )}
     </>
   );
 }

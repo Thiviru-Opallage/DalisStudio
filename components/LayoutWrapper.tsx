@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import Footer from "./Footer";
 
 interface LayoutWrapperProps {
@@ -12,6 +13,10 @@ export default function LayoutWrapper({
   children,
   hideFooter = false,
 }: LayoutWrapperProps) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
+  const shouldHideFooter = hideFooter || isAdminRoute;
+
   return (
     <>
       {/* PAGE CONTENT */}
@@ -20,7 +25,7 @@ export default function LayoutWrapper({
       </div>
 
       {/* FOOTER — shrink-0 prevents it from being squashed or hidden */}
-      {!hideFooter && (
+      {!shouldHideFooter && (
         <div className="w-full shrink-0">
           <Footer />
         </div>

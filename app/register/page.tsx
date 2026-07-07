@@ -81,14 +81,14 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md p-8 border border-gray-200 rounded-xl shadow-sm"
+        className="w-full max-w-md p-8 border border-gray-200 rounded-xl shadow-sm bg-white"
       >
-        <h1 className="text-3xl font-semibold mb-2">Create Account</h1>
+        <h1 className="text-3xl font-semibold mb-2 text-black">Create Account</h1>
         <p className="text-sm text-gray-500 mb-6">
           Already have an account?{" "}
           <Link
             href="/login"
-            className="underline cursor-pointer hover:text-black transition-colors"
+            className="underline cursor-pointer hover:text-black transition-colors text-black"
           >
             Sign in
           </Link>
@@ -111,7 +111,7 @@ export default function RegisterPage() {
             disabled={loading}
             className={`w-full border p-3 rounded focus:outline-none
                         focus:ring-2 focus:ring-black transition
-                        disabled:opacity-50
+                        disabled:opacity-50 text-black placeholder-gray-400 bg-white
                         ${fieldErrors.name ? "border-red-400" : "border-gray-300"}`}
           />
           {fieldErrors.name && (
@@ -129,7 +129,7 @@ export default function RegisterPage() {
             disabled={loading}
             className={`w-full border p-3 rounded focus:outline-none
                         focus:ring-2 focus:ring-black transition
-                        disabled:opacity-50
+                        disabled:opacity-50 text-black placeholder-gray-400 bg-white
                         ${fieldErrors.email ? "border-red-400" : "border-gray-300"}`}
           />
           {fieldErrors.email && (
@@ -141,13 +141,13 @@ export default function RegisterPage() {
         <div className="mb-5">
           <input
             type="password"
-            placeholder="Min 8 chars, uppercase, lowercase, number, special char"
+            placeholder="Password"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             disabled={loading}
             className={`w-full border p-3 rounded focus:outline-none
                         focus:ring-2 focus:ring-black transition
-                        disabled:opacity-50
+                        disabled:opacity-50 text-black placeholder-gray-400 bg-white
                         ${fieldErrors.password ? "border-red-400" : "border-gray-300"}`}
           />
           {fieldErrors.password && (
@@ -178,7 +178,7 @@ export default function RegisterPage() {
           className="w-full flex items-center justify-center gap-2
                      border border-gray-300 py-3 rounded
                      cursor-pointer hover:bg-gray-50 transition-colors
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+                     disabled:opacity-50 disabled:cursor-not-allowed text-black"
         >
           <GoogleIcon />
           Continue with Google

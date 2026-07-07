@@ -38,24 +38,28 @@ export default function MessagesTable({ messages: initial }: { messages: Message
       {messages.map((m) => (
         <div
           key={m.id}
-          className={`bg-white rounded-xl border shadow-sm p-5 transition-all ${
+          className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5 transition-all ${
             !m.is_read ? "border-l-4 border-l-black" : ""
           }`}
         >
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 sm:gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold">{m.name}</p>
+                <p className="font-semibold text-sm sm:text-base truncate" style={{ color: "#000000" }}>
+                  {m.name}
+                </p>
                 {!m.is_read && (
-                  <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full">New</span>
+                  <span className="text-xs bg-black text-white px-2 py-0.5 rounded-full shrink-0">
+                    New
+                  </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500">{m.email}</p>
+              <p className="text-sm truncate" style={{ color: "#6b7280" }}>{m.email}</p>
               {m.phone && (
-                <p className="text-sm text-gray-400">{m.phone}</p>
+                <p className="text-sm" style={{ color: "#9ca3af" }}>{m.phone}</p>
               )}
             </div>
-            <p className="text-xs text-gray-400 whitespace-nowrap">
+            <p className="text-xs whitespace-nowrap" style={{ color: "#9ca3af" }}>
               {new Date(m.created_at).toLocaleString("en-US", {
                 timeZone: "Asia/Colombo", dateStyle: "medium", timeStyle: "short",
               })}
@@ -65,19 +69,28 @@ export default function MessagesTable({ messages: initial }: { messages: Message
           {/* Preview / expand */}
           <div className="mt-3">
             {expanded === m.id ? (
-              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+              <p
+                className="text-sm whitespace-pre-wrap leading-relaxed break-words"
+                style={{ color: "#374151" }}
+              >
                 {m.message}
               </p>
             ) : (
-              <p className="text-sm text-gray-500 truncate">{m.message}</p>
+              <p
+                className="text-sm line-clamp-2 sm:truncate break-words"
+                style={{ color: "#6b7280" }}
+              >
+                {m.message}
+              </p>
             )}
           </div>
 
           {/* Actions */}
-          <div className="mt-3 flex gap-3 flex-wrap">
+          <div className="mt-3 flex gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={() => setExpanded(expanded === m.id ? null : m.id)}
-              className="text-xs text-blue-600 hover:underline"
+              className="min-h-[40px] px-3 flex items-center text-xs sm:text-sm hover:underline active:bg-blue-50 rounded-lg"
+              style={{ color: "#2563eb" }}
             >
               {expanded === m.id ? "Collapse" : "Read more"}
             </button>
@@ -86,7 +99,8 @@ export default function MessagesTable({ messages: initial }: { messages: Message
               <button
                 onClick={() => markRead(m.id)}
                 disabled={loading === m.id}
-                className="text-xs text-gray-500 hover:text-black disabled:opacity-50"
+                className="min-h-[40px] px-3 flex items-center text-xs sm:text-sm hover:text-black active:bg-gray-100 disabled:opacity-50 rounded-lg"
+                style={{ color: "#6b7280" }}
               >
                 {loading === m.id ? "Marking…" : "Mark as read"}
               </button>
@@ -94,7 +108,8 @@ export default function MessagesTable({ messages: initial }: { messages: Message
 
             <a
               href={`mailto:${m.email}`}
-              className="text-xs text-gray-500 hover:text-black"
+              className="min-h-[40px] px-3 flex items-center text-xs sm:text-sm hover:text-black active:bg-gray-100 rounded-lg"
+              style={{ color: "#6b7280" }}
             >
               Reply via email ↗
             </a>
@@ -103,8 +118,8 @@ export default function MessagesTable({ messages: initial }: { messages: Message
       ))}
 
       {messages.length === 0 && (
-        <div className="bg-white rounded-xl border p-10 text-center">
-          <p className="text-gray-400 text-sm">No messages yet.</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-8 sm:p-10 text-center">
+          <p className="text-sm" style={{ color: "#9ca3af" }}>No messages yet.</p>
         </div>
       )}
     </div>

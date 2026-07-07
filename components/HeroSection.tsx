@@ -1,380 +1,188 @@
 "use client";
 
-import React, { useRef, useEffect, useState, CSSProperties } from 'react';
-import { motion } from 'framer-motion';
-import LiveClock from './LiveClock';
-import Image from 'next/image';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { sfPro } from "@/lib/fonts";
+import LiquidMaskHoverReveal from "./LiquidMaskHoverReveal";
+import ThemeSwitch from "./ThemeSwitch";
 
-// ── Noise overlay ─────────────────────────────────────────────────────────────
+// Hero section with liquid mask WebGL effect, theme toggle, and a
+// PremiumLanding-style entrance animation (clip-path/scale/fade on the
+// whole section, then a staggered rise-in for the headline + toggle).
+//
+// This entrance is intentionally NOT gated behind sessionStorage/localStorage
+// the way GreetingAnimation is — it's meant to play every time this
+// component mounts, including plain client-side navigation back to Home
+// from another page, not just on a fresh page load.
 
-function Noise({ isHovered }: { isHovered: boolean }) {
-  return (
-    <div
-      className="absolute inset-0 pointer-events-none z-100 transition-opacity duration-300"
-      style={{
-        opacity: isHovered ? 0.06 : 0.02,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-      }}
-    />
-  );
-}
+const ease = [0.14, 1, 0.34, 1] as const;
 
-// ── Letter flip ───────────────────────────────────────────────────────────────
-
-interface FlipLetterProps {
-  char: string;
-  fontSize: string;
-  color?: string;
-  flipColor?: string;
-  fontFamily?: string;
-  fontWeight?: string | number;
-  letterSpacing?: string;
-  lineHeight?: number | string;
-  opacity?: number;
-}
-
-function FlipLetter({
-  char,
-  fontSize,
-  color = 'var(--fg)',
-  flipColor = '#e8c840',
-  fontFamily = '"Arial Black","Helvetica Neue",sans-serif',
-  fontWeight = 900,
-  letterSpacing = '-0.03em',
-  lineHeight = 0.88,
-  opacity = 1,
-}: FlipLetterProps) {
-  const [flipped, setFlipped] = useState(false);
-
-  const isSpace = char === ' ' || char === '\u00A0';
-
-  // For space characters just render a non-breaking space without interaction
-  if (isSpace) {
-    return (
-      <span
-        style={{
-          display: 'inline-block',
-          fontSize,
-          fontFamily,
-          fontWeight,
-          letterSpacing,
-          lineHeight,
-          opacity,
-          color,
-          userSelect: 'none',
-        }}
-      >
-        &nbsp;
-      </span>
-    );
-  }
-
-  const innerStyle: CSSProperties = {
-    position: 'relative',
-    display: 'inline-block',
-    transformStyle: 'preserve-3d',
-    transition: 'transform 0.52s cubic-bezier(0.23, 1, 0.32, 1)',
-    transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-    fontSize,
-    fontFamily,
-    fontWeight,
-    letterSpacing,
-    lineHeight,
-  };
-
-  const faceBase: CSSProperties = {
-    display: 'block',
-    backfaceVisibility: 'hidden',
-    WebkitBackfaceVisibility: 'hidden',
-    userSelect: 'none',
-  };
-
-  const backStyle: CSSProperties = {
-    ...faceBase,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    transform: 'rotateY(180deg)',
-    color: flipColor,
-  };
-
-  return (
-    <span
-      style={{ display: 'inline-block', perspective: '500px', cursor: 'default' }}
-      onMouseEnter={() => setFlipped(true)}
-      onMouseLeave={() => setFlipped(false)}
-    >
-      <span style={innerStyle}>
-        <span style={{ ...faceBase, color, opacity }}>{char}</span>
-        <span style={backStyle}>{char}</span>
-      </span>
-    </span>
-  );
-}
-
-// ── Flip word (big display text) ──────────────────────────────────────────────
-
-interface FlipWordProps {
-  word: string;
-  fontSize: string;
-  suffix?: React.ReactNode;
-}
-
-function FlipWord({ word, fontSize, suffix }: FlipWordProps) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-      {[...word].map((char, i) => (
-        <FlipLetter
-          key={i}
-          char={char}
-          fontSize={fontSize}
-          color="var(--fg)"
-          flipColor="#e8c840"
-          fontFamily='"Arial Black","Helvetica Neue",sans-serif'
-          fontWeight={900}
-          letterSpacing="-0.03em"
-          lineHeight={0.88}
-        />
-      ))}
-      {suffix && (
-        <span
-          style={{
-            fontSize: '1em',
-            fontWeight: 400,
-            lineHeight: 1,
-            letterSpacing: 0,
-            marginLeft: '0.04em',
-            alignSelf: 'flex-start',
-            marginTop: '0.5em',
-            color: 'var(--fg)',
-            fontFamily: '"Arial Black","Helvetica Neue",sans-serif',
-            userSelect: 'none',
-          }}
-        >
-          {suffix}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ── Flip subtitle (spaced small caps) ────────────────────────────────────────
-
-function FlipSubtitle({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        width: '100%',
-      }}
-    >
-      {[...text].map((char, i) => (
-        <FlipLetter
-          key={i}
-          char={char}
-          fontSize="clamp(7.5px, 0.65vw, 11px)"
-          color="var(--fg)"
-          flipColor="#e8c840"
-          fontFamily='"Helvetica Neue",Arial,sans-serif'
-          fontWeight={300}
-          letterSpacing="0em"
-          lineHeight={1}
-          opacity={0.45}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Main Hero ─────────────────────────────────────────────────────────────────
-
-const Hero = () => {
-  const imgRef  = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLElement>(null);
-  const rafRef  = useRef<number>(0);
-  const mouse   = useRef({ x: 0, y: 0 });
-  const curr    = useRef({ x: 0, y: 0 });
-  const isHov   = useRef(false);
-  const [blockHover, setBlockHover] = useState(false);
-
-  useEffect(() => {
-    const hero = heroRef.current;
-    const img  = imgRef.current;
-    if (!hero || !img) return;
-
-    const onEnter = () => { isHov.current = true; };
-    const onLeave = () => { isHov.current = false; };
-    const onMove  = (e: MouseEvent) => {
-      const r = hero.getBoundingClientRect();
-      mouse.current.x = (e.clientX - r.left) / r.width  - 0.5;
-      mouse.current.y = (e.clientY - r.top)  / r.height - 0.5;
-    };
-
-    hero.addEventListener('mouseenter', onEnter);
-    hero.addEventListener('mouseleave', onLeave);
-    hero.addEventListener('mousemove',  onMove);
-
-    const tick = () => {
-      const ease = isHov.current ? 0.06 : 0.04;
-      curr.current.x += (mouse.current.x - curr.current.x) * ease;
-      curr.current.y += (mouse.current.y - curr.current.y) * ease;
-      if (!isHov.current) {
-        mouse.current.x *= 0.92;
-        mouse.current.y *= 0.92;
-      }
-      const { x, y } = curr.current;
-      img.style.transform = `translate(${x * 22}px,${y * 11}px) skew(${y * 5}deg,${x * 2.5}deg) scale(${1 + (Math.abs(x) + Math.abs(y)) * 0.02})`;
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    tick();
-
-    return () => {
-      hero.removeEventListener('mouseenter', onEnter);
-      hero.removeEventListener('mouseleave', onLeave);
-      hero.removeEventListener('mousemove',  onMove);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  /*
-   * FONT SIZE MATH (unchanged from original)
-   * DALIS  = 5 chars  →  5 × 0.97 = 4.85 em  at fontSize_D
-   * STUDIO = 6 chars  →  6 × 0.97 = 5.82 em  at fontSize_S
-   * fontSize_S = fontSize_D × (4.85 / 5.82) ≈ fontSize_D × 0.8333
-   */
-  const fzDalis  = 'clamp(78px, 11vw, 176px)';
-  const fzStudio = 'clamp(65px, 9.17vw, 147px)';
-
-  const subtitleVariant = {
-    hidden:  { y: '105%', opacity: 0 },
-    visible: {
-      y: '0%', opacity: 1,
-      transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] as [number,number,number,number], delay: 0.72 },
-    },
-  };
-
-  return (
-    <section
-      ref={heroRef}
-      className="grid-background relative h-screen w-full overflow-hidden flex items-center"
-      style={{ color: 'var(--fg)' }}
-    >
-      <Noise isHovered={blockHover} />
-
-      {/* ── Right: hero image ───────────────────────────────────── */}
-      <div
-        className="absolute right-0 bottom-0 pointer-events-none"
-        style={{ width: '52vw', top: '8%' }}
-      >
-        <div
-          ref={imgRef}
-          className="relative w-full h-full will-change-transform"
-          style={{ transformOrigin: 'center center' }}
-        >
-          <Image
-            src="/me.PNG"
-            alt="Dalis Studio"
-            fill
-            className="object-contain object-bottom-right"
-            style={{ filter: 'grayscale(100%) contrast(1.05)' }}
-            priority
-          />
-        </div>
-
-        <div
-          className="absolute bottom-8 z-20 pointer-events-auto -translate-x-1/2"
-          style={{ left: '72%' }}
-        >
-          <LiveClock />
-        </div>
-      </div>
-
-      {/* ── Centre: vertical rule + meta label ──────────────────── */}
-      <div
-        className="absolute top-0 bottom-0 z-10 flex flex-col items-center pointer-events-none"
-        style={{ left: '47vw' }}
-      >
-        <div style={{ flex: 1, width: '1px', background: 'var(--grid-line)' }} />
-        <div
-          style={{
-            writingMode: 'vertical-rl',
-            textOrientation: 'mixed',
-            fontSize: '9px',
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            fontFamily: '"Helvetica Neue",Arial,sans-serif',
-            fontWeight: 300,
-            opacity: 0.28,
-            color: 'var(--fg)',
-            padding: '1.2rem 0',
-            userSelect: 'none',
-          }}
-        >
-          Portfolio&nbsp;·&nbsp;2026
-        </div>
-        <div style={{ flex: 1, width: '1px', background: 'var(--grid-line)' }} />
-      </div>
-
-      {/* ── Left: text block ────────────────────────────────────── */}
-      <div
-        className="relative z-10 flex flex-col items-start justify-center select-none"
-        style={{ paddingLeft: '4vw', width: '46vw' }}
-        onMouseEnter={() => setBlockHover(true)}
-        onMouseLeave={() => setBlockHover(false)}
-      >
-        {/* Row 1: DALIS */}
-        <div className="overflow-hidden" style={{ lineHeight: 0.88 }}>
-          <motion.div
-            initial={{ y: '105%', opacity: 0, skewY: 4 }}
-            animate={{ y: '0%',   opacity: 1, skewY: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-          >
-            <FlipWord word="DALIS" fontSize={fzDalis} />
-          </motion.div>
-        </div>
-
-        {/* Row 2: STUDIO® */}
-        <div className="overflow-hidden mt-[0.04em]" style={{ lineHeight: 0.88 }}>
-          <motion.div
-            initial={{ y: '105%', opacity: 0, skewY: 4 }}
-            animate={{ y: '0%',   opacity: 1, skewY: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.35 }}
-          >
-            <FlipWord word="STUDIO" fontSize={fzStudio} suffix="®" />
-          </motion.div>
-        </div>
-
-        {/* Row 3: subtitle — space-between to fill the same width */}
-        <div className="overflow-hidden" style={{ marginTop: 'clamp(10px, 1.1vw, 18px)', width: 'calc(100% - 4vw)' }}>
-          <motion.p
-            variants={subtitleVariant}
-            initial="hidden"
-            animate="visible"
-            style={{
-              fontSize: 'clamp(7.5px, 0.65vw, 11px)',
-              textTransform: 'uppercase',
-              fontWeight: 300,
-              opacity: 0.45,
-              fontFamily: '"Helvetica Neue",Arial,sans-serif',
-              color: 'var(--fg)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              width: '100%',
-            }}
-          >
-            {'Archetype: Creative Designer & Artist'.split('').map((ch, i) => (
-              <span key={i} style={{ display: 'inline-block' }}>
-                {ch === ' ' ? '\u00A0' : ch}
-              </span>
-            ))}
-          </motion.p>
-        </div>
-      </div>
-    </section>
-  );
+const sectionOuterVariants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.94,
+    y: 90,
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 1.2, ease },
+  },
 };
 
-export default Hero;
+const clipLayerVariants = {
+  hidden: {
+    // Bottom-weighted inset (24% bottom vs 8% top) so the frame itself
+    // reads as anchored to the bottom edge rather than a centered zoom —
+    // combined with the outer layer's y offset, this is what makes the
+    // section genuinely look like it's rising up from behind the bottom
+    // of the screen, instead of growing outward from the middle.
+    clipPath: "inset(8% 15% 24% 15% round 32px)",
+  },
+  visible: {
+    clipPath: "inset(0% 0% 0% 0% round 0px)",
+    transition: { duration: 1.2, ease },
+  },
+};
+
+const contentContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.08, delayChildren: 0.45 },
+  },
+};
+
+const contentItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease },
+  },
+};
+
+export default function HeroSection() {
+  const [data, setData] = useState({
+    title: "Dalis Studio",
+    base_image: "/hero-base.jpg",
+    hover_image: "/hero-hover.jpg"
+  });
+
+  useEffect(() => {
+    fetch("/api/content/hero")
+      .then(res => res.json())
+      .then(d => {
+        if (d && d.base_image && d.hover_image) {
+          setData(d);
+        }
+      })
+      .catch(err => console.error("Failed to fetch hero content", err));
+  }, []);
+
+  return (
+    <motion.section
+      variants={sectionOuterVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative w-full h-screen overflow-hidden select-none"
+      style={{ background: "var(--bg)" }}
+    >
+      {/* Isolated clip-path layer: promoted to its own composited layer
+          (translateZ(0) + will-change) so the browser can repaint this
+          layer's clip-path animation independently of the WebGL canvas's
+          own render loop inside it, instead of both competing for the
+          same paint pass every frame — that contention was the actual
+          cause of the mid-animation stall/stutter. */}
+      <motion.div
+        variants={clipLayerVariants}
+        initial="hidden"
+        animate="visible"
+        className="absolute inset-0 w-full h-full"
+        style={{ transform: "translateZ(0)", willChange: "clip-path" }}
+      >
+        {/* Liquid mask WebGL layer */}
+        <LiquidMaskHoverReveal
+          key={data.base_image + data.hover_image}
+          imageBase={{
+            src: data.base_image,
+            alt: "Dalis Studio Hero Background",
+            positionY: "20%",
+          }}
+          imageHover={{
+            src: data.hover_image,
+            alt: "Dalis Studio Hero Reveal",
+            positionY: "20%",
+          }}
+          radius={100}
+          curl={30}
+          texture={0.7}
+          parallaxAmount={100}
+          shrinkTimeSeconds={2.4}
+        />
+
+        {/* Bottom gradient — keeps text legible over the photo */}
+        <div
+          className="absolute inset-0 pointer-events-none z-10"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 30%, transparent 52%)",
+          }}
+        />
+      </motion.div>
+
+      {/* Staggered content: headline + toggle rise in after the section's
+          own clip/scale/fade has started settling. */}
+      <motion.div
+        variants={contentContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="contents"
+      >
+        {/* "Dalis Studio®" headline */}
+        <motion.div
+          variants={contentItemVariants}
+          className="absolute bottom-0 left-0 w-full pointer-events-none z-20 overflow-visible"
+        >
+          <h1
+            className={`${sfPro.className} font-black leading-none whitespace-nowrap text-[3.6rem] sm:text-[5rem] lg:text-[12.355rem]`}
+            style={{
+              color: "#ffffff",
+              letterSpacing: "-0.06em",
+              lineHeight: 0.75,
+              marginLeft: "-0.02em",
+            }}
+          >
+            {data.title}
+            <sup
+              className="text-[0.16em] lg:text-[0.18em]"
+              style={{
+                marginLeft: "-0.55em",
+                position: "relative",
+                top: "-0.75em",
+                fontWeight: "normal",
+                fontFamily:
+                  "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                display: "inline-block",
+                verticalAlign: "super",
+                fontVariantNumeric: "normal",
+                fontStretch: "normal",
+                fontStyle: "normal",
+              }}
+            >
+              ®
+            </sup>
+          </h1>
+        </motion.div>
+
+        {/* Theme toggle pill */}
+        <motion.div
+          variants={contentItemVariants}
+          className="absolute z-30 bottom-4 right-4 sm:bottom-5 sm:right-5 lg:bottom-[-1.5rem] lg:right-[20rem]"
+        >
+          <ThemeSwitch />
+        </motion.div>
+      </motion.div>
+    </motion.section>
+  );
+}

@@ -10,7 +10,7 @@ const schema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // ── Admin only ──
   const session = await getServerSession(authOptions);
@@ -18,7 +18,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = parseInt(params.id);
+  const { id: rawId } = await params;
+  const userId = parseInt(rawId);
   if (isNaN(userId)) {
     return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
   }
@@ -40,7 +41,10 @@ export async function PATCH(
 
     const updated = await prisma.users.update({
       where: { id: userId },
-      data: { is_active: parsed.data.is_active },
+      data: {
+        is_active: parsed.data.is_active,
+        token_version: { increment: 1 },
+      },
     });
 
     return NextResponse.json({

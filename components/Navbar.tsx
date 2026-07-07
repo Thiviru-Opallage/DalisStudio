@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { motion, AnimatePresence, cubicBezier } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { sfPro } from "@/lib/fonts";
+import { SphereToggle } from "@/components/ThemeSwitch";
 
 const navItems = [
   { num: "01", label: "Home", href: "/", showOnTop: false },
@@ -14,22 +16,56 @@ const navItems = [
 ];
 
 export default function Navbar() {
+  const pathname = usePathname();
+
   const [open, setOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [pastHero, setPastHero] = useState(false);
   const [dimension, setDimension] = useState({ width: 0, height: 0 });
+
+  // Read dimensions synchronously before first paint so isMobile is
+  // correct on the very first render — no flash, no delay.
+  useLayoutEffect(() => {
+    setDimension({ width: window.innerWidth, height: window.innerHeight });
+
+    const handleResize = () => {
+      setDimension({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 100);
+      // "Past the hero" = scrolled a full viewport height. Only matters on
+      // Home, but harmless to track everywhere.
+      setPastHero(window.scrollY > window.innerHeight);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    setDimension({ width: window.innerWidth, height: window.innerHeight });
+    // Run once on mount too, in case the page loads already scrolled
+    // (e.g. back/forward navigation restoring scroll position).
+    handleScroll();
 
+    window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // The side-menu theme toggle is hidden only on the Home page, and only
+  // until the user has scrolled past its hero section — Home's hero
+  // already has its own <ThemeSwitch />, so showing a second one in the
+  // menu at the same time would be redundant. Every other page shows the
+  // toggle in the menu right away, since they have no hero-embedded switch.
+  const isHome = pathname === "/";
+  const showMenuThemeToggle = !isHome || pastHero;
+
   const menuEase = cubicBezier(0.76, 0, 0.24, 1);
+
+  // On mobile (< 768px) the hamburger is always visible.
+  // On desktop it appears only after scrolling or when the menu is open.
+  const isMobile = dimension.width > 0 && dimension.width < 768;
+  const showHamburger = isMobile || isScrolled || open;
 
   const initialPath = `M100 0 L100 ${dimension.height} Q-100 ${
     dimension.height / 2
@@ -39,29 +75,33 @@ export default function Navbar() {
     dimension.height / 2
   } 100 0`;
 
+  // Hide the navigation bar on admin, login, and register pages
+  if (
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/register")
+  ) {
+    return null;
+  }
+
   return (
     <>
-      {/* TOP DESKTOP NAV */}
+      {/* TOP DESKTOP NAV — hidden on mobile, hamburger takes over */}
       <nav
-        className={`fixed top-0 left-0 w-full px-10 py-8 z-40 transition-opacity duration-300 ${
+        className={`hidden md:block fixed top-0 left-0 w-full px-10 py-0 z-40 transition-opacity duration-300 ${
           isScrolled ? "opacity-0 pointer-events-none" : "opacity-100"
         }`}
       >
         <div className="relative flex items-center justify-between">
           {/* LEFT — LOGO */}
           <Link href="/" className="flex items-center">
-            <div
-              className="w-11 h-11 flex items-center justify-center rounded-full"
-              style={{ background: "var(--fg)" }}
-            >
-              <Image
-                src="/mainLogo2-removebg.PNG"
-                alt="Dalis Studio Logo"
-                width={50}
-                height={50}
-                className="object-contain"
-              />
-            </div>
+            <Image
+              src="/mainLogo.png"
+              alt="Dalis Studio Logo"
+              width={80}
+              height={80}
+              className="object-contain"
+            />
           </Link>
 
           {/* CENTER — BRAND */}
@@ -91,14 +131,25 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* FLOATING HAMBURGER */}
-      <div className="fixed top-8 right-8 z-70">
+      {/* FLOATING HAMBURGER
+          Desktop: appears after scroll or when menu is open (original behaviour)
+          Mobile:  always visible                                               */}
+      <div
+        className={`fixed top-8 right-8 z-70 ${
+          !showHamburger ? "pointer-events-none" : ""
+        }`}
+      >
         <motion.button
           onClick={() => setOpen(!open)}
           initial={{ scale: 0 }}
-          animate={{ scale: isScrolled || open ? 1 : 0 }}
+          animate={{ scale: showHamburger ? 1 : 0 }}
+          // On mobile the button is always visible — use duration:0 so the
+          // initial scale-snap (0→1 before first paint) is invisible.
+          transition={isMobile ? { duration: 0 } : undefined}
           whileHover={{ scale: 1.1 }}
-          className="w-16 h-16 rounded-full flex flex-col items-center justify-center gap-1.5 shadow-2xl border border-white/10"
+          className={`w-16 h-16 rounded-full flex flex-col items-center justify-center gap-1.5 shadow-2xl border border-white/10 ${
+            !showHamburger ? "pointer-events-none" : "pointer-events-auto"
+          }`}
           style={{ background: "var(--fg)" }}
         >
           <motion.div
@@ -167,6 +218,31 @@ export default function Navbar() {
                   </motion.div>
                 ))}
               </div>
+
+              {/* THEME TOGGLE — lives only here, inside the side menu, below
+                  the nav links. Not shown in the top desktop nav bar, not
+                  attached to the hamburger button itself. Sized down from
+                  the Hero section's larger instance via SphereToggle's
+                  size props.
+                  On Home only, this is withheld until the user scrolls
+                  past the hero section, since the hero already has its own
+                  toggle — showing both at once would be redundant. On
+                  every other page (no hero-embedded switch) it's always
+                  shown. */}
+              {showMenuThemeToggle && (
+                <motion.div
+                  initial={{ x: 80, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{
+                    delay: 0.1 + navItems.length * 0.05,
+                    duration: 0.5,
+                    ease: menuEase,
+                  }}
+                  className="mt-12"
+                >
+                  <SphereToggle width={88} height={36} knobSize={28} />
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}

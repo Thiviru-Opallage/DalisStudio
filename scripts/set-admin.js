@@ -51,6 +51,6 @@ main().catch((e) => {
   process.exit(1);
 });
 
-// Run node scripts/set-admin.js in the terminal
-// admin email: topallage@gmail.com
-// Password: Admin123_
+// Usage: node scripts/set-admin.js
+// You will be prompted interactively for email, password, and display name.
+// NEVER hardcode credentials in source files.

@@ -91,20 +91,22 @@ export default function GreetingAnimation({ onFinish }: GreetingAnimationProps) 
       )}
 
       {/* Greeting Text */}
-      <div className="relative z-10 h-full flex items-center justify-center text-white text-4xl md:text-6xl font-medium">
-        <span className="mr-4 h-3 w-3 rounded-full bg-white animate-pulse" />
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={greetings[index].text}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
-          >
-            {greetings[index].text}
-          </motion.p>
-        </AnimatePresence>
-      </div>
+      {!exit && (
+        <div className="relative z-10 h-full flex items-center justify-center text-white text-4xl md:text-6xl font-medium">
+          <span className="mr-4 h-3 w-3 rounded-full bg-white animate-pulse" />
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={greetings[index].text}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1 }}
+            >
+              {greetings[index].text}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

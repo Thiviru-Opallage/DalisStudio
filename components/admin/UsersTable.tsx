@@ -84,10 +84,11 @@ export default function UsersTable({
   const isSelf = (id: number) => String(id) === currentAdminId;
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Desktop view */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               {["User","Role","Verified","Joined","Status","Emails","Actions"].map((h) => (
                 <th key={h} className="text-left p-4 font-medium text-gray-500 whitespace-nowrap">
@@ -98,11 +99,11 @@ export default function UsersTable({
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b last:border-0 hover:bg-gray-50">
+              <tr key={u.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
 
                 {/* User */}
                 <td className="p-4">
-                  <p className="font-medium">{u.name || "—"}</p>
+                  <p className="font-medium text-black">{u.name || "—"}</p>
                   <p className="text-xs text-gray-400">{u.email}</p>
                   {isSelf(u.id) && (
                     <span className="text-xs text-blue-500 font-medium">You</span>
@@ -209,6 +210,109 @@ export default function UsersTable({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile view */}
+      <div className="md:hidden flex flex-col divide-y divide-gray-100">
+        {users.map((u) => (
+          <div key={u.id} className="p-4 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-medium text-black">{u.name || "—"}</p>
+                <p className="text-xs text-gray-400">{u.email}</p>
+                {isSelf(u.id) && (
+                  <span className="text-xs text-blue-500 font-medium block mt-0.5">You</span>
+                )}
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                u.role === "admin" ? "bg-black text-white" : "bg-gray-100 text-gray-600"
+              }`}>
+                {u.role}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm">
+              <div>
+                <span className="text-gray-500 block text-xs mb-0.5">Status</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  u.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+                }`}>
+                  {u.is_active ? "Active" : "Deactivated"}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-xs mb-0.5">Verified</span>
+                {u.email_verified
+                  ? <span className="text-green-600 text-xs font-medium">✓ Verified</span>
+                  : <span className="text-yellow-600 text-xs font-medium">✗ Pending</span>
+                }
+              </div>
+              <div>
+                <span className="text-gray-500 block text-xs mb-0.5">Joined</span>
+                <span className="text-xs text-gray-700">
+                  {new Date(u.created_at).toLocaleDateString("en-US", { dateStyle: "short" })}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-xs mb-0.5">Emails</span>
+                {u.role === "admin" ? (
+                  <button
+                    onClick={() => toggleNotifications(u.id, u.email_notifications)}
+                    disabled={!!loading}
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                      u.email_notifications
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-400"
+                    } disabled:opacity-50`}
+                  >
+                    {loading === `${u.id}-toggle-notifications`
+                      ? "..."
+                      : u.email_notifications ? "📧 On" : "📧 Off"}
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-300">—</span>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-3 border-t border-gray-100 flex gap-2">
+              {!isSelf(u.id) && (
+                <>
+                  <button
+                    onClick={() => toggleActive(u.id, u.is_active)}
+                    disabled={!!loading}
+                    className={`flex-1 text-xs px-3 py-2 rounded border font-medium transition-colors ${
+                      u.is_active
+                        ? "border-red-300 text-red-600 hover:bg-red-50"
+                        : "border-green-300 text-green-600 hover:bg-green-50"
+                    } disabled:opacity-50`}
+                  >
+                    {loading === `${u.id}-toggle-active`
+                      ? "..."
+                      : u.is_active ? "Deactivate" : "Reactivate"}
+                  </button>
+                  <button
+                    onClick={() => toggleRole(u.id, u.role)}
+                    disabled={!!loading}
+                    className={`flex-1 text-xs px-3 py-2 rounded border font-medium transition-colors ${
+                      u.role === "admin"
+                        ? "border-orange-300 text-orange-600 hover:bg-orange-50"
+                        : "border-purple-300 text-purple-600 hover:bg-purple-50"
+                    } disabled:opacity-50`}
+                  >
+                    {loading === `${u.id}-set-role`
+                      ? "..."
+                      : u.role === "admin" ? "Demote" : "Make Admin"}
+                  </button>
+                </>
+              )}
+              {isSelf(u.id) && (
+                <span className="text-xs text-gray-400 italic mx-auto">No self-actions available</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

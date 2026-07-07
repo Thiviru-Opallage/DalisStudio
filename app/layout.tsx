@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={sfPro.variable}>
       <body
-        className="font-sans antialiased flex flex-col min-h-screen overflow-x-hidden bg-transparent dark"
+        className="font-sans antialiased flex flex-col min-h-screen overflow-x-hidden bg-transparent"
       >
         <Providers>
           <Navbar />
